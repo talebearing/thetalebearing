@@ -2,6 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Booking - Thetalebearing</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -93,12 +94,8 @@
     function renderPackages() {
         const cat = document.getElementById('b-cat').value; 
         
-        // MUNCULKAN PERINGATAN JIKA KATEGORI = GRADUATION
-        if(cat === 'Graduation') {
-            document.getElementById('grad-warning').classList.remove('hidden');
-        } else {
-            document.getElementById('grad-warning').classList.add('hidden');
-        }
+        if(cat === 'Graduation') document.getElementById('grad-warning').classList.remove('hidden');
+        else document.getElementById('grad-warning').classList.add('hidden');
 
         const pkgs = getPackages().filter(p => p.category === cat);
         document.getElementById('pkg-container').innerHTML = pkgs.length ? pkgs.map(p => `<div class="radio-card" id="card-${p.id}" onclick="selectPackage(${p.id}, ${p.price}, '${p.name}', '${p.duration}')"><h3 style="margin:0 0 5px 0;">${p.name}</h3><p style="margin:0; font-weight:800; color:var(--primary); font-size:16px;">${formatRupiah(p.price)}</p><small style="color:var(--text-muted); display:block; margin-top:8px; line-height:1.4;">⏳ ${p.duration} | 📷 ${p.quota} Edit<br><span style="color:var(--text-main); font-weight:500; display:inline-block; margin-top:5px;">✨ ${p.details || ''}</span></small></div>`).join('') : '<p style="font-size:13px; color:gray;">Belum ada paket.</p>';
@@ -143,10 +140,32 @@
         window.open(`https://wa.me/${settings.wa}?text=${encodeURIComponent(msg)}`, '_blank'); window.location.href = 'index.html';
     }
     
-    // Terapkan bahasa dan render paket saat pertama kali halaman dimuat
     document.addEventListener("DOMContentLoaded", () => {
         applyLang();
-        renderPackages();
+        
+        // AUTO-SELECT DARI HALAMAN DEPAN
+        const params = new URLSearchParams(window.location.search);
+        const preCat = params.get('cat');
+        const prePkgId = params.get('pkg');
+
+        if (preCat) {
+            let catDropdown = document.getElementById('b-cat');
+            for(let i=0; i<catDropdown.options.length; i++) {
+                if(catDropdown.options[i].value === preCat) { catDropdown.selectedIndex = i; break; }
+            }
+        }
+        
+        renderPackages(); 
+
+        if (prePkgId) {
+            const pkg = getPackages().find(p => p.id == prePkgId);
+            if (pkg) {
+                // Memberikan highlight otomatis pada paket yang diklik
+                selectPackage(pkg.id, pkg.price, pkg.name, pkg.duration);
+                // Scroll otomatis ke bagian form nama agar klien fokus mengisi
+                document.getElementById('b-name').scrollIntoView({behavior: "smooth", block: "center"});
+            }
+        }
     });
 </script>
 </body></html>

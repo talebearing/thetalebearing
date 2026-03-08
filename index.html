@@ -2,28 +2,22 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Portal - Thetalebearing</title>
     <link rel="stylesheet" href="style.css">
-    <style>.split-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; } .catalog-card { background: white; padding: 20px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); } @media (max-width: 768px) { .split-layout { grid-template-columns: 1fr; } }</style>
 </head>
 <body>
     <div style="position: absolute; top: 20px; right: 20px; z-index: 100;">
         <button onclick="toggleLang()" class="lang-btn" data-i18n="t_lang">🌐 Switch to English</button>
     </div>
 
-    <div class="container" style="margin-top: 50px; margin-bottom: 50px;">
-        <div class="split-layout">
-            <div>
-                <h1 class="brand" style="font-size:2.5rem; margin: 0 0 10px 0;">Thetalebearing</h1>
-                <p style="color:var(--text-muted); margin-bottom: 30px;" data-i18n="t_desc">Dokumentasikan momen terbaik Anda bersama layanan profesional kami.</p>
-                
-                <h2 style="font-size: 1.2rem; color: var(--primary); border-bottom: 2px solid var(--primary-soft); padding-bottom: 10px;">🎓 Graduation</h2>
-                <div id="cat-grad"></div>
-                <h2 style="font-size: 1.2rem; color: var(--primary); border-bottom: 2px solid var(--primary-soft); padding-bottom: 10px; margin-top: 30px;">💍 Wedding & Prewed</h2>
-                <div id="cat-wed"></div>
-            </div>
-
-            <div class="card" style="position: sticky; top: 30px;">
+    <div class="container" style="margin-top: 50px; margin-bottom: 50px; max-width: 1000px;">
+        
+        <div style="max-width: 450px; margin: 0 auto 60px auto; text-align: center;">
+            <h1 class="brand" style="font-size:3rem; margin: 0 0 10px 0; letter-spacing:-1px;">Thetalebearing</h1>
+            <p style="color:var(--text-muted); font-size:15px; margin-bottom: 30px;" data-i18n="t_desc">Dokumentasikan momen terbaik Anda bersama layanan profesional kami.</p>
+            
+            <div class="card" style="text-align: left; border-top: 4px solid var(--primary);">
                 <h2 style="margin: 0 0 5px 0; text-align: center;" data-i18n="t_portal">Client Portal</h2>
                 <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 25px;" data-i18n="t_login_desc">Masuk untuk memilih dan mendownload foto.</p>
                 
@@ -31,21 +25,56 @@
                 <div class="form-group"><label data-i18n="t_pass">Password</label><input type="password" id="password"></div>
                 <button onclick="auth()" class="btn-primary" style="width:100%; margin-top: 10px; padding: 15px;" data-i18n="t_login_btn">Masuk Aplikasi</button>
                 
-                <div style="margin-top: 30px; padding-top: 25px; border-top: 1px solid var(--border); text-align: center;">
-                    <p style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 15px;" data-i18n="t_no_session">Belum Punya Sesi?</p>
-                    <button onclick="window.location.href='booking.html'" class="btn-sec" style="width: 100%; padding: 15px;" data-i18n="t_book_btn">📅 Pesan Jadwal Pemotretan Sekarang</button>
+                <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border); text-align: center;">
+                    <p style="font-size: 12px; font-weight: 700; color: var(--text-main); margin-bottom: 12px;" data-i18n="t_no_session">Belum Punya Sesi?</p>
+                    <button onclick="window.location.href='booking.html'" class="btn-sec" style="width: 100%; padding: 15px;" data-i18n="t_book_btn">📅 Pesan Jadwal Sekarang</button>
                 </div>
             </div>
         </div>
+
+        <div>
+            <div style="text-align: center; margin-bottom: 40px;">
+                <h2 style="font-size: 1.8rem; margin:0;">Katalog Layanan Kami</h2>
+                <p style="font-size: 13px; color: var(--text-muted);">Pilih paket yang paling sesuai dengan kebutuhan momen Anda.</p>
+            </div>
+
+            <h3 style="font-size: 1.2rem; color: var(--primary); border-bottom: 2px solid var(--primary-soft); padding-bottom: 10px;">🎓 Graduation</h3>
+            <div id="cat-grad" class="package-grid"></div>
+
+            <h3 style="font-size: 1.2rem; color: var(--primary); border-bottom: 2px solid var(--primary-soft); padding-bottom: 10px; margin-top: 40px;">💍 Wedding & Prewedding</h3>
+            <div id="cat-wed" class="package-grid"></div>
+        </div>
+
     </div>
+
+    <footer style="text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); background: var(--surface);">
+        <b>Thetalebearing Studio</b> &copy; 2026<br>Professional Photography & Videography Services
+    </footer>
 
 <script src="database.js"></script>
 <script>
     document.addEventListener('keypress', function(e) { if(e.key === 'Enter') auth(); });
 
+    // Fungsi klik menuju booking
+    function goToBooking(category, pkgId) {
+        window.location.href = `booking.html?cat=${encodeURIComponent(category)}&pkg=${pkgId}`;
+    }
+
     function renderCatalog() {
         const pkgs = getPackages();
-        const renderItem = (p) => `<div class="catalog-card"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><h3 style="margin:0; font-size:16px;">${p.name}</h3><div style="font-size:11px; color:var(--text-muted); margin-top:5px;">⏱️ ${p.duration || '-'} | 📷 Maks ${p.quota} Edit</div></div><span style="font-weight:800; color:var(--primary); font-size:15px;">${formatRupiah(p.price)}</span></div><div style="font-size:12px; color:var(--text-main); margin-top:12px; background:var(--bg); padding:10px; border-radius:6px; line-height:1.5;">✨ <i>${p.details || 'Semua mentahan diberikan via link.'}</i></div></div>`;
+        const renderItem = (p) => `
+            <div class="catalog-card" onclick="goToBooking('${p.category}', ${p.id})">
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <h3 style="margin:0 0 5px 0; font-size:16px;">${p.name}</h3>
+                        <span style="font-weight:800; color:var(--primary); font-size:15px;">${formatRupiah(p.price)}</span>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-bottom:15px; font-weight:600;">⏱️ ${p.duration || '-'} | 📷 Maks ${p.quota} Edit</div>
+                </div>
+                <div style="font-size:12px; color:var(--text-main); background:var(--bg); padding:12px; border-radius:8px; line-height:1.5;">
+                    ✨ <i>${p.details || 'Semua mentahan diberikan via link Google Drive / Flash Drive.'}</i>
+                </div>
+            </div>`;
         document.getElementById('cat-grad').innerHTML = pkgs.filter(p => p.category === 'Graduation').map(renderItem).join('');
         document.getElementById('cat-wed').innerHTML = pkgs.filter(p => p.category === 'Wedding').map(renderItem).join('');
     }
@@ -53,12 +82,12 @@
 
     function auth() {
         const u = document.getElementById('username').value.trim(); const p = document.getElementById('password').value.trim();
-        if(!u || !p) return alert("Wajib diisi.");
+        if(!u || !p) return alert("Username dan Password wajib diisi.");
         const adm = getAdmins().find(a => a.user === u && a.pass === p);
         if(adm) { setSession({ role: adm.role, name: u }); window.location.href = 'admin.html'; return; }
         const c = getClients().find(cl => cl.user === u && cl.pass === p);
         if(c) { setSession({ role: 'client', user: c.user, name: c.name }); window.location.href = 'client.html'; } 
-        else { alert("Kredensial tidak valid."); }
+        else { alert("Kredensial tidak valid. Cek kembali username/password Anda."); }
     }
 </script>
 </body>
