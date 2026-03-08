@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Project & Booking - Admin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav><div class="brand">Thetalebearing</div><div class="nav-actions"><button onclick="openProfile()" class="profile-btn">👤 <span id="display-user"></span><span id="notif-badge" class="badge-notif hidden">0</span></button><button onclick="logout()" class="btn-danger" style="padding:6px 12px; font-size:11px;">Logout</button></div></nav>
+
+    <div class="container">
+        <div class="admin-tabs">
+            <button onclick="window.location.href='admin.html'">📊 Dashboard</button>
+            <button onclick="window.location.href='admin-project.html'" class="active">📁 Project & Booking</button>
+            <button onclick="window.location.href='admin-schedule.html'" class="admin-only">⏰ Jadwal & Kuota</button>
+            <button onclick="window.location.href='admin-finance.html'" class="admin-only">💰 Keuangan</button>
+            <button onclick="window.location.href='admin-package.html'" class="admin-only">📦 Paket Layanan</button>
+            <button onclick="window.location.href='admin-settings.html'" class="admin-only">⚙️ Pengaturan</button>
+        </div>
+
+        <div class="admin-only">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <h2 style="margin:0;">Jadwal & Permintaan Booking</h2>
+                <div style="display:flex; gap:10px;"><button onclick="copySchedule()" class="btn-sec">📋 Copy Jadwal</button><button onclick="copyBookingLink()" class="btn-primary">🔗 Link Booking</button></div>
+            </div>
+            <div class="grid-2" style="margin-bottom: 30px;">
+                <div class="card" style="padding: 20px; border-top: 4px solid var(--warning);"><h3 style="margin:0 0 15px 0; font-size:14px;">Booking Baru (Pending)</h3><div id="booking-list" style="max-height: 250px; overflow-y: auto;"></div></div>
+                <div class="card" style="padding: 20px; border-top: 4px solid var(--primary);"><h3 style="margin:0 0 15px 0; font-size:14px;">Jadwal Sesi Mendatang</h3><div id="schedule-list" style="max-height: 250px; overflow-y: auto;"></div></div>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 30px;">
+            <h2 style="margin:0;">Manajemen Project Client</h2>
+            <button onclick="openClientModal()" class="btn-primary admin-only">+ Buat Project Baru</button>
+        </div>
+        
+        <div style="display:flex; gap:10px; align-items:center; background:#F9FAFB; padding:15px; border-radius:var(--radius); border:1px solid var(--border); margin-top:15px; flex-wrap: wrap;">
+            <label style="margin:0;">Filter:</label>
+            <select id="filter-status" onchange="renderAll()" style="width: auto; padding:8px;"><option value="all">Semua Status</option><option value="proses">Sedang Proses</option><option value="selesai">Selesai</option></select>
+            <input type="date" id="filter-date" onchange="renderAll()" style="width: auto; padding:8px;">
+            <button onclick="document.getElementById('filter-status').value='all'; document.getElementById('filter-date').value=''; renderAll();" class="btn-sec" style="padding:8px;">Reset</button>
+            <div style="flex:1;"></div>
+            <button onclick="copyProgress()" class="btn-primary">📋 Copy Laporan Progress</button>
+        </div>
+
+        <div class="table-wrapper" style="margin-top: 10px;">
+            <table><thead><tr><th>Detail Client</th><th>Paket & Waktu</th><th>Status Seleksi</th><th>Progres Editor</th><th id="th-aksi">Tindakan (Aksi)</th></tr></thead><tbody id="admin-table"></tbody></table>
+        </div>
+    </div>
+
+    <div id="client-modal" class="modal-overlay hidden"><div class="modal-content"><h2 style="margin-top:0;">Form Project</h2><input type="hidden" id="edit-index" value="-1"><div class="form-group"><label>Nama Client</label><input type="text" id="m-name"></div><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;"><div class="form-group"><label>Kategori</label><select id="m-cat" onchange="handleCat()"><option value="Graduation">Graduation</option><option value="Wedding">Wedding</option><option value="Personal/Studio">Personal/Studio</option><option value="Event">Event</option></select></div><div class="form-group"><label>Paket</label><select id="m-paket" onchange="calcTotalAdmin()"></select></div><div class="form-group"><label>Max Foto</label><input type="number" id="m-max"></div></div><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;"><div class="form-group"><label>Tgl Sesi</label><input type="date" id="m-date" onchange="validateAdminSlots()"></div><div class="form-group"><label>Jam Mulai</label><select id="m-time-start" onchange="calcTotalAdmin()"></select></div><div class="form-group"><label>Jam Selesai</label><input type="text" id="m-time-end" readonly style="background:#E5E7EB;"></div></div>
+        
+        <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:10px;">
+            <div class="form-group"><label>Lokasi Sesi</label><input type="text" id="m-location" placeholder="Nama Tempat/Gedung"></div>
+            <div class="form-group"><label>Link Google Maps</label><input type="text" id="m-maps" placeholder="https://maps..."></div>
+        </div>
+
+        <div class="form-group admin-only" style="margin-top: 10px;"><label>Layanan Tambahan (Add-ons)</label><div id="m-addon-container"></div></div>
+        <div class="admin-only"><div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background: #F9FAFB; padding: 15px; border: 1px solid var(--border); margin-bottom: 15px;"><div class="form-group" style="margin:0;"><label>Username Login</label><input type="text" id="m-user"></div><div class="form-group" style="margin:0;"><label>Password</label><input type="text" id="m-pass"></div></div><div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background: #ECFDF5; padding: 15px; border: 1px solid #A7F3D0; margin-bottom: 15px;"><div class="form-group currency-input" style="margin:0;"><label style="color: #065F46;">Total Tagihan</label><input type="text" id="m-finance-total" oninput="maskRupiah(this)"></div><div class="form-group currency-input" style="margin:0;"><label style="color: #065F46;">DP Masuk</label><input type="text" id="m-finance-paid" oninput="maskRupiah(this)"></div></div></div>
+        <div class="form-group"><label>Link Folder Mentahan</label><input type="text" id="m-preview"></div><div class="form-group"><label>Link Hasil Final</label><input type="text" id="m-final"></div><div style="display:flex; gap:10px;"><button onclick="saveClientData()" class="btn-primary" style="flex:2;">Simpan Data</button><button onclick="closeModal('client-modal')" class="btn-sec" style="flex:1;">Batal</button></div></div></div>
+
+    <div id="view-modal" class="modal-overlay hidden"><div class="modal-content"><h2 style="margin-top:0;">Review Pilihan</h2><div id="review-status" style="margin-bottom:10px;"></div><div id="selection-list" style="margin:10px 0; border:1px solid var(--border); max-height:300px; overflow-y:auto; padding:15px; background:#F9FAFB;"></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><button onclick="copyToClipboard(false)" class="btn-primary">Copy ID</button><button onclick="copyToClipboard(true)" class="btn-sec">Copy ID + Note</button></div><button onclick="closeModal('view-modal')" class="btn-danger" style="width:100%; margin-top:15px;">Tutup</button></div></div>
+    <div id="profile-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; text-align: center;"><div style="font-size: 50px; margin-bottom: 10px;">👤</div><h2 id="prof-name" style="margin:0;">Name</h2><p id="prof-role" style="color:var(--primary); font-weight:700; font-size:12px; text-transform:uppercase; margin:5px 0 20px 0;">Role</p><button onclick="closeModal('profile-modal')" class="btn-sec" style="width:100%; margin-top:20px;">Tutup</button></div></div>
+    <footer style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 12px; margin-top: auto;"><b>Thetalebearing Studio Management System</b> &copy; 2026</footer>
+
+<script src="database.js"></script>
+<script>
+    const session = getSession(); if(!session || !['admin', 'editor', 'superadmin'].includes(session.role)) window.location.href = 'index.html';
+    document.getElementById('display-user').innerText = session.name; document.getElementById('prof-name').innerText = session.name; document.getElementById('prof-role').innerText = session.role;
+    if(session.role === 'editor') { document.querySelectorAll('.admin-only').forEach(el => el.classList.add('editor-restricted')); document.getElementById('th-aksi').innerText = "Tindakan (Editor)"; }
+    updateNotifBadge();
+
+    let clients = getClients(); let packages = getPackages(); let bookings = getBookings(); let addonsData = getAddons(); let currentReviewIdx = null; let totalMinsCacheAdmin = 0; let settings = getSettings();
+
+    function generateAdminTimeOptions() {
+        let sel = document.getElementById('m-time-start'); let oldVal = sel.value; sel.innerHTML = '<option value="">-- Jam --</option>';
+        let start = timeToMins(settings.opStart || '08:00'); let end = timeToMins(settings.opEnd || '20:00');
+        for(let i=start; i<=end; i+=30) { let t = minsToTime(i); sel.innerHTML += `<option value="${t}">${t}</option>`; }
+        if(oldVal) sel.value = oldVal;
+    }
+
+    function renderAll() {
+        if(session.role !== 'editor') {
+            document.getElementById('booking-list').innerHTML = bookings.filter(b => !b.isAccepted).map((b) => {
+                const realIdx = bookings.findIndex(orig => orig === b);
+                return `<div style="border-bottom:1px solid var(--border); padding:10px 0;"><strong>${b.name}</strong> <span style="font-size:11px; background:var(--primary-soft); padding:2px 4px;">${b.category}</span><br><span style="font-size:12px; color:var(--text-muted);">Paket: ${b.paket} | Tgl: ${b.date} | Jam: ${b.timeRange}<br>📍 Lokasi: ${b.location||'-'}</span><div style="margin-top:8px;"><button onclick="acceptBooking(${realIdx})" class="btn-primary" style="padding:4px 8px; font-size:11px;">Acc & Buat Project</button><button onclick="deleteBooking(${realIdx})" class="btn-danger" style="padding:4px 8px; font-size:11px; margin-left:5px;">Tolak</button></div></div>`;
+            }).join('') || `<p style="font-size:13px; color:var(--text-muted);">Tidak ada permintaan baru.</p>`;
+            
+            const dateF = document.getElementById('filter-date').value || new Date().toISOString().split('T')[0];
+            document.getElementById('schedule-list').innerHTML = clients.filter(c => c.date === dateF && !c.isFinished).sort((a,b) => a.timeRange.localeCompare(b.timeRange)).map(c => `<div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding:10px 0;"><div><strong>${c.timeRange||'-'}</strong><br><span style="font-size:11px;">📍 ${c.location||'-'}</span></div><div style="text-align:right; font-weight:700;">${c.name}<br><span style="font-size:10px; font-weight:normal;">${c.paket||c.category}</span></div></div>`).join('') || `<p style="font-size:13px; color:var(--text-muted);">Tidak ada jadwal pada tgl tsb.</p>`;
+        }
+
+        let filteredClients = clients; const statF = document.getElementById('filter-status').value; const dateF = document.getElementById('filter-date').value;
+        if(statF === 'proses') filteredClients = filteredClients.filter(c => !c.isFinished);
+        if(statF === 'selesai') filteredClients = filteredClients.filter(c => c.isFinished);
+        if(dateF) filteredClients = filteredClients.filter(c => c.date === dateF);
+
+        document.getElementById('admin-table').innerHTML = filteredClients.map((c) => {
+            const i = clients.findIndex(orig => orig === c); const count = Object.keys(c.selections||{}).length; const status = c.isSubmitted ? `<span style="color:var(--success);font-weight:bold;font-size:11px;">TERKUNCI</span>` : `<span style="font-size:11px;color:var(--text-muted);">Belum Kunci</span>`;
+            return `<tr><td><strong>${c.name}</strong><br><span style="font-size:11px;color:var(--text-muted);">User: ${session.role==='editor'?'***':c.user}<br>📍 ${c.location||'-'}</span></td><td><strong>${c.paket}</strong><br><span style="font-size:11px;color:var(--text-muted);">Tgl: ${c.date} | Jam: ${c.timeRange||'-'}<br>Addon: ${c.addons||'-'}</span></td><td>${status}<br><span style="font-size:11px;">Pilih: ${count}/${c.maxSelect}</span></td><td><select onchange="updateStatus(${i}, this.value)" style="padding:5px; font-size:11px; border-radius:6px; background: ${c.isFinished ? '#D1FAE5' : '#F9FAFB'};"><option value="false" ${!c.isFinished?'selected':''}>PROSES</option><option value="true" ${c.isFinished?'selected':''}>SELESAI</option></select></td><td><div style="display:flex; flex-wrap:wrap; gap:5px;"><button onclick="reviewProject(${i})" class="btn-primary" style="padding:6px;">Lihat Pilihan</button><button onclick="openClientModal(${i})" class="btn-sec" style="padding:6px;">Edit</button>${session.role !== 'editor' ? `<button onclick="sendJobFotografer(${i})" class="btn-wa" style="padding:6px;">Share Job</button><button onclick="shareAccess(${i})" class="btn-success" style="padding:6px;">Share Web</button>${c.isFinished ? `<button onclick="sendNotifSelesai(${i})" class="btn-primary" style="padding:6px;">Notif Selesai</button>` : ''}<button onclick="deleteProject(${i})" class="btn-danger" style="padding:6px;">X</button>` : ''}</div></td></tr>`;
+        }).join('') || `<tr><td colspan="5" align="center" style="padding:20px;">Tidak ada data.</td></tr>`;
+    }
+
+    function handleCat() { const cat = document.getElementById('m-cat').value; document.getElementById('m-paket').innerHTML = packages.filter(p=>p.category===cat).map(p=>`<option value="${p.name}">${p.name}</option>`).join('') + '<option>Custom</option>'; document.getElementById('m-addon-container').innerHTML = addonsData.filter(a=>a.category===cat).map(a=>`<label class="addon-box"><input type="checkbox" class="addon-cb" value="${a.name}" data-price="${a.price}" data-time="${a.time}" onchange="calcTotalAdmin()"> ${a.name}</label>`).join('') || '<span style="font-size:11px;">Tidak ada addons</span>'; generateAdminTimeOptions(); calcTotalAdmin(); }
+    
+    function validateAdminSlots() {
+        let date = document.getElementById('m-date').value; let sel = document.getElementById('m-time-start'); let editIdx = parseInt(document.getElementById('edit-index').value);
+        if(!date || !totalMinsCacheAdmin) return;
+        if(isDayBlocked(date)) { alert(`Perhatian: Tanggal ${date} ditandai LIBUR.`); }
+        for(let i=1; i<sel.options.length; i++) { let opt = sel.options[i]; let start = opt.value; let end = minsToTime(timeToMins(start) + totalMinsCacheAdmin); if(checkConflict(date, start, end, editIdx, -1)) { opt.disabled = true; opt.text = `${start} (Penuh/Libur)`; } else { opt.disabled = false; opt.text = start; } }
+    }
+
+    function calcTotalAdmin() {
+        const cat = document.getElementById('m-cat').value; const pName = document.getElementById('m-paket').value;
+        const pkg = packages.find(p => p.name === pName && p.category === cat);
+        let basePrice = pkg ? pkg.price : 0; totalMinsCacheAdmin = pkg ? parseDurationToMins(pkg.duration) : 0; let addonsText = [];
+        if(pkg) document.getElementById('m-max').value = pkg.quota;
+        document.querySelectorAll('.addon-cb:checked').forEach(cb => { basePrice += parseInt(cb.dataset.price); totalMinsCacheAdmin += parseInt(cb.dataset.time); addonsText.push(cb.value); });
+        
+        let ft = document.getElementById('m-finance-total'); ft.value = basePrice; maskRupiah(ft);
+        let fp = document.getElementById('m-finance-paid'); if(document.getElementById('edit-index').value === "-1") { fp.value = basePrice * 0.3; maskRupiah(fp); }
+        
+        const tStart = document.getElementById('m-time-start').value; if(tStart) document.getElementById('m-time-end').value = minsToTime(timeToMins(tStart) + totalMinsCacheAdmin);
+        validateAdminSlots(); return addonsText.join(', ');
+    }
+    
+    function copyBookingLink() { let url = window.location.href; navigator.clipboard.writeText(url.substring(0, url.lastIndexOf('/')) + '/booking.html'); alert("Link Booking Publik disalin!"); }
+    
+    function acceptBooking(idx) {
+        const b = bookings[idx]; openClientModal(-1);
+        document.getElementById('m-name').value = b.name; document.getElementById('m-date').value = b.date; 
+        document.getElementById('m-cat').value = b.category; handleCat(); document.getElementById('m-paket').value = b.paket; 
+        document.querySelectorAll('.addon-cb').forEach(cb => { if(b.addons && b.addons.includes(cb.value)) cb.checked = true; }); calcTotalAdmin();
+        const times = (b.timeRange||"").split(' - '); document.getElementById('m-time-start').value = times[0]||''; document.getElementById('m-time-end').value = times[1]||'';
+        document.getElementById('m-location').value = b.location||''; document.getElementById('m-maps').value = b.locationLink||'';
+        bookings.splice(idx,1); saveBookings(bookings); renderAll(); updateNotifBadge(); alert("Data Ditarik! Isi User & Password lalu Simpan Data.");
+    }
+    function deleteBooking(idx) { if(confirm("Tolak permintaan booking ini?")) { bookings.splice(idx,1); saveBookings(bookings); renderAll(); updateNotifBadge(); } }
+
+    function openClientModal(idx = -1) { 
+        document.getElementById('client-modal').classList.remove('hidden'); generateAdminTimeOptions();
+        if(idx > -1) { 
+            const c = clients[idx]; document.getElementById('edit-index').value = idx; document.getElementById('m-name').value = c.name; document.getElementById('m-date').value = c.date; 
+            document.getElementById('m-cat').value = c.category; handleCat(); document.getElementById('m-paket').value = c.paket; 
+            document.querySelectorAll('.addon-cb').forEach(cb => { if(c.addons && c.addons.includes(cb.value)) cb.checked = true; }); calcTotalAdmin();
+            const times = (c.timeRange||"").split(' - '); document.getElementById('m-time-start').value = times[0]||''; document.getElementById('m-time-end').value = times[1]||'';
+            document.getElementById('m-location').value = c.location||''; document.getElementById('m-maps').value = c.locationLink||'';
+            document.getElementById('m-max').value = c.maxSelect; document.getElementById('m-user').value = c.user; document.getElementById('m-pass').value = c.pass; let ft = document.getElementById('m-finance-total'); ft.value = c.financeTotal||0; maskRupiah(ft); let fp = document.getElementById('m-finance-paid'); fp.value = c.financePaid||0; maskRupiah(fp); document.getElementById('m-preview').value = c.previewLink||""; document.getElementById('m-final').value = c.finalLink||"";
+        } else { document.getElementById('edit-index').value = -1; document.querySelectorAll('input[type="text"], input[type="date"], input[type="number"]').forEach(i=>i.value=''); document.querySelectorAll('.addon-cb').forEach(cb => cb.checked = false); document.getElementById('m-cat').value='Graduation'; handleCat(); } 
+    }
+
+    function saveClientData() {
+        const i = parseInt(document.getElementById('edit-index').value); const n = document.getElementById('m-name').value.trim(); let data = clients[i] || {};
+        data.name = n; data.date = document.getElementById('m-date').value; data.timeRange = `${document.getElementById('m-time-start').value} - ${document.getElementById('m-time-end').value}`; 
+        data.category = document.getElementById('m-cat').value; data.paket = document.getElementById('m-paket').value; data.maxSelect = parseInt(document.getElementById('m-max').value||0); 
+        data.previewLink = document.getElementById('m-preview').value; data.finalLink = document.getElementById('m-final').value;
+        data.location = document.getElementById('m-location').value; data.locationLink = document.getElementById('m-maps').value;
+        
+        if(session.role !== 'editor') {
+            data.user = document.getElementById('m-user').value.trim(); data.pass = document.getElementById('m-pass').value.trim(); data.addons = calcTotalAdmin(); data.financeTotal = unmask(document.getElementById('m-finance-total').value); data.financePaid = unmask(document.getElementById('m-finance-paid').value);
+            if(!data.user || !data.pass) return alert("User dan Password wajib!");
+        }
+        if(i===-1) { data.isFinished=false; data.isSubmitted=false; data.selections={}; clients.push(data); } else { clients[i] = data; }
+        saveClients(clients); closeModal('client-modal'); renderAll();
+    }
+
+    function sendJobFotografer(idx) { const c = clients[idx]; const mapsText = c.locationLink ? `\n🗺️ Maps: ${c.locationLink}` : ''; const text = `📷 *JOB DETAIL THETALEBEARING* 📷\n\n👤 Klien: *${c.name}*\n📅 Tgl Sesi: *${c.date || '-'}*\n⏰ Jam Sesi: *${c.timeRange || '-'}*\n📍 Lokasi: *${c.location||'-'}*${mapsText}\n\n🏷️ Kategori: *${c.category}*\n📦 Paket: *${c.paket}*\n➕ Add-ons: *${c.addons || 'Tidak ada'}*\n\nMohon persiapkan equipment. Semangat! 🔥`; navigator.clipboard.writeText(text); alert("Detail Job disalin!"); }
+    function sendNotifSelesai(idx) { const c = clients[idx]; const text = `Halo Kak *${c.name}*, kabar gembira! 🎉\n\nFoto-foto momen spesial kakak sudah selesai kami edit dengan sentuhan magis tim Thetalebearing ✨\n\nSilakan login ke portal untuk mendownload hasil akhirnya ya:\n🔗 Link: ${window.location.href.replace('admin-project.html', 'index.html')}\n👤 User: ${c.user}\n🔑 Pass: ${c.pass}\n\nTerima kasih sudah mempercayakan momen berharganya bersama kami! 🙏`; navigator.clipboard.writeText(text); alert("Notifikasi Selesai disalin!"); }
+    function copySchedule() { const dateF = document.getElementById('filter-date').value || new Date().toISOString().split('T')[0]; const up = clients.filter(c => c.date === dateF && !c.isFinished).sort((a,b) => a.timeRange.localeCompare(b.timeRange)); let txt = `📅 *JADWAL SESI (${dateF})*\n\n` + up.map(c => `⏰ ${c.timeRange}\n👤 ${c.name} (${c.category} - ${c.paket})\n📍 Lokasi: ${c.location||'-'}`).join('\n\n'); navigator.clipboard.writeText(txt); alert("Jadwal disalin!"); }
+    function copyProgress() { let f = clients; const stat = document.getElementById('filter-status').value; if(stat==='proses') f = f.filter(c=>!c.isFinished); if(stat==='selesai') f = f.filter(c=>c.isFinished); const txt = "⏳ *LAPORAN PROGRESS EDITING*\n\n" + f.map(c => `👤 ${c.name} (${c.paket})\n📷 Dipilih: ${Object.keys(c.selections||{}).length}/${c.maxSelect} | Status: ${c.isFinished?'Selesai':'Proses'}`).join('\n\n'); navigator.clipboard.writeText(txt); alert("Progress difilter disalin!"); }
+
+    function reviewProject(idx) { currentReviewIdx = idx; const c = clients[idx]; document.getElementById('review-status').innerHTML = c.isSubmitted ? `<span style="color:var(--success);">Status: Terkunci.</span>` : `Status: Belum Kunci.`; document.getElementById('selection-list').innerHTML = Object.entries(c.selections||{}).map(([k,v])=>`<div style="padding:10px;border-bottom:1px solid var(--border); background:#fff;"><b>${k}</b><br><span style="font-size:12px; color:var(--text-muted)">Note: ${v||'-'}</span></div>`).join(''); document.getElementById('view-modal').classList.remove('hidden'); }
+    function copyToClipboard(wn) { const sel = clients[currentReviewIdx].selections||{}; navigator.clipboard.writeText(wn ? Object.entries(sel).map(([k,v])=>`${k} (Note: ${v||'-'})`).join('\n') : Object.keys(sel).join(', ')); alert("Disalin!"); }
+    function shareAccess(idx) { let baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/')); navigator.clipboard.writeText(`Halo Kak ${clients[idx].name}\n\nBerikut link untuk memilih foto:\n\nLink Login: ${baseUrl}/index.html\nUser: ${clients[idx].user}\nPass: ${clients[idx].pass}`); alert("Akses disalin!"); }
+    function updateStatus(i, val) { clients[i].isFinished = (val==='true'); saveClients(clients); renderAll(); }
+    function deleteProject(i) { if(confirm("Hapus project ini permanen?")) { clients.splice(i,1); saveClients(clients); renderAll(); } }
+    function openProfile() { document.getElementById('profile-modal').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    renderAll();
+</script>
+</body></html>

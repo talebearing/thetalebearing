@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Jadwal & Kuota - Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <style>.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } @media(max-width:768px){.grid-2{grid-template-columns: 1fr;}}</style>
+</head>
+<body>
+    <nav><div class="brand">Thetalebearing</div><div class="nav-actions"><button onclick="openProfile()" class="profile-btn">👤 <span id="display-user"></span></button><button onclick="logout()" class="btn-danger" style="padding:6px 12px; font-size:11px;">Logout</button></div></nav>
+
+    <div class="container">
+        <div class="admin-tabs">
+            <button onclick="window.location.href='admin.html'">📊 Dashboard</button>
+            <button onclick="window.location.href='admin-project.html'">📁 Project & Booking</button>
+            <button onclick="window.location.href='admin-schedule.html'" class="active admin-only">⏰ Jadwal & Kuota</button>
+            <button onclick="window.location.href='admin-finance.html'" class="admin-only">💰 Keuangan</button>
+            <button onclick="window.location.href='admin-package.html'" class="admin-only">📦 Paket Layanan</button>
+            <button onclick="window.location.href='admin-settings.html'" class="admin-only">⚙️ Pengaturan</button>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h2 style="margin:0 0 10px 0; font-size:1.4rem;">⚙️ Kapasitas & Jam Reguler</h2>
+                <p style="font-size:12px; color:var(--text-muted); margin-bottom: 20px;">Atur batas maksimal order rutin harian studio Anda.</p>
+                
+                <h3 style="font-size: 12px; margin:0 0 10px 0;">Rentang Jam Booking (Kelipatan 30 Menit)</h3>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom: 20px;">
+                    <select id="set-op-start" style="flex:1; font-weight:bold;"></select>
+                    <span style="font-size:12px; color:gray;">s/d</span>
+                    <select id="set-op-end" style="flex:1; font-weight:bold;"></select>
+                </div>
+
+                <div style="background:#ECFDF5; border:1px solid #A7F3D0; padding:15px; border-radius:var(--radius); margin-bottom: 15px;">
+                    <label style="color:#065F46; font-size:12px;">Maks Sesi Paralel / Bersamaan</label>
+                    <input type="number" id="set-max-slot" placeholder="0">
+                    <small style="color:#065F46; font-size:10px; display:block; margin-top:5px;">*Isi angka <b>0</b> jika Anda tidak membatasi klien yang booking di jam yang sama (Tak Terhingga).</small>
+                </div>
+
+                <div style="background:#EFF6FF; border:1px solid #BFDBFE; padding:15px; border-radius:var(--radius); margin-bottom: 20px;">
+                    <label style="color:#1D4ED8; font-size:12px;">Maks Total Order per Hari</label>
+                    <input type="number" id="set-max-day" placeholder="0">
+                    <small style="color:#1D4ED8; font-size:10px; display:block; margin-top:5px;">*Isi angka <b>0</b> jika kuota harian tak terhingga.</small>
+                </div>
+
+                <button onclick="saveSchedule()" class="btn-primary" style="width: 100%;">Simpan Pengaturan Reguler</button>
+            </div>
+
+            <div class="card" style="border-top: 4px solid var(--danger);">
+                <h2 style="margin:0 0 10px 0; font-size:1.4rem; color:var(--danger);">🚫 Hari Libur / Tutup Sesi</h2>
+                <p style="font-size:12px; color:var(--text-muted); margin-bottom: 20px;">Gunakan menu ini jika Anda ingin menutup tanggal spesifik, atau memblokir jam istirahat agar tidak bisa dibooking.</p>
+
+                <div style="display:flex; gap:10px; align-items:flex-end; margin-bottom: 15px;">
+                    <div style="flex:1.5;"><label>Pilih Tanggal (Wajib)</label><input type="date" id="block-date"></div>
+                    <div style="flex:1;"><label>Jam Mulai</label><select id="block-start"></select></div>
+                    <div style="flex:1;"><label>Jam Selesai</label><select id="block-end"></select></div>
+                </div>
+                <button onclick="addBlockedSlot()" class="btn-danger" style="width: 100%; margin-bottom: 20px;">Tutup Tanggal / Jam Ini</button>
+
+                <h3 style="font-size: 12px; margin:0 0 10px 0;">Daftar Sesi Ditutup:</h3>
+                <div id="blocked-list" style="background:#F9FAFB; padding:15px; border:1px solid var(--border); border-radius:var(--radius); max-height:200px; overflow-y:auto;">
+                    </div>
+            </div>
+        </div>
+    </div>
+    <footer style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 12px; margin-top: auto;"><b>Thetalebearing Studio Management System</b> &copy; 2026</footer>
+    <div id="profile-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; text-align: center;"><div style="font-size: 50px; margin-bottom: 10px;">👤</div><h2 id="prof-name" style="margin:0;">Name</h2><p id="prof-role" style="color:var(--primary); font-weight:700; font-size:12px; text-transform:uppercase; margin:5px 0 20px 0;">Role</p><button onclick="closeModal('profile-modal')" class="btn-sec" style="width:100%; margin-top:20px;">Tutup</button></div></div>
+
+<script src="database.js"></script>
+<script>
+    const session = getSession(); if(!session || session.role === 'editor') window.location.href = 'index.html';
+    document.getElementById('display-user').innerText = session.name; document.getElementById('prof-name').innerText = session.name; document.getElementById('prof-role').innerText = session.role;
+    
+    let settings = getSettings(); let blockedSlots = getBlocked();
+
+    function populateTimeDropdowns() {
+        let sels = ['set-op-start', 'set-op-end', 'block-start', 'block-end'];
+        sels.forEach(id => {
+            let s = document.getElementById(id);
+            if(id.startsWith('block')) s.innerHTML = '<option value="">-- Semua Jam (Libur Full) --</option>';
+            for(let i=0; i<24*60; i+=30) { let t = minsToTime(i); s.innerHTML += `<option value="${t}">${t}</option>`; }
+        });
+    }
+
+    function loadSchedule() {
+        populateTimeDropdowns();
+        document.getElementById('set-op-start').value = settings.opStart || '08:00'; document.getElementById('set-op-end').value = settings.opEnd || '20:00';
+        document.getElementById('set-max-slot').value = settings.maxConcurrent || 0; document.getElementById('set-max-day').value = settings.maxOrderPerDay || 0;
+        renderBlocked();
+    }
+
+    function saveSchedule() {
+        settings.opStart = document.getElementById('set-op-start').value; settings.opEnd = document.getElementById('set-op-end').value;
+        settings.maxConcurrent = parseInt(document.getElementById('set-max-slot').value) || 0; settings.maxOrderPerDay = parseInt(document.getElementById('set-max-day').value) || 0;
+        saveSettings(settings); alert("Aturan Reguler Tersimpan!");
+    }
+
+    function renderBlocked() {
+        let list = document.getElementById('blocked-list');
+        list.innerHTML = blockedSlots.length ? blockedSlots.map((b, i) => {
+            let timeText = b.isFullDay ? `<span style="color:var(--danger); font-weight:bold;">LIBUR SEHARIAN PENUH</span>` : `Jam Tutup: <b>${b.start} - ${b.end}</b>`;
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);"><div><div style="font-size:13px; font-weight:800;">📅 ${b.date}</div><div style="font-size:11px; color:var(--text-muted); margin-top:3px;">${timeText}</div></div><button onclick="removeBlock(${i})" class="btn-sec" style="font-size:10px; padding:5px 8px;">Buka Kembali</button></div>`;
+        }).join('') : '<p style="font-size:12px; color:gray; text-align:center;">Belum ada tanggal merah/sesi yang ditutup.</p>';
+    }
+
+    function addBlockedSlot() {
+        let date = document.getElementById('block-date').value; let start = document.getElementById('block-start').value; let end = document.getElementById('block-end').value;
+        if(!date) return alert("Pilih Tanggal yang ingin ditutup!");
+        if((start && !end) || (!start && end)) return alert("Jika ingin menutup jam spesifik, pastikan Jam Mulai dan Jam Selesai terisi. Jika ingin libur seharian, kosongkan keduanya.");
+        
+        blockedSlots.push({ date: date, start: start, end: end, isFullDay: (!start && !end) });
+        saveBlocked(blockedSlots); renderBlocked();
+        document.getElementById('block-date').value = ""; document.getElementById('block-start').value = ""; document.getElementById('block-end').value = "";
+    }
+
+    function removeBlock(i) { blockedSlots.splice(i,1); saveBlocked(blockedSlots); renderBlocked(); }
+    function openProfile() { document.getElementById('profile-modal').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    
+    loadSchedule();
+</script>
+</body></html>

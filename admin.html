@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav><div class="brand">Thetalebearing</div><div class="nav-actions"><button onclick="openProfile()" class="profile-btn">👤 <span id="display-user"></span><span id="notif-badge" class="badge-notif hidden">0</span></button><button onclick="logout()" class="btn-danger" style="padding:6px 12px; font-size:11px;">Logout</button></div></nav>
+
+    <div class="container">
+        <div class="admin-tabs">
+            <button onclick="window.location.href='admin.html'" class="active">📊 Dashboard</button>
+            <button onclick="window.location.href='admin-project.html'">📁 Project & Booking</button>
+            <button onclick="window.location.href='admin-schedule.html'" class="admin-only">⏰ Jadwal & Kuota</button>
+            <button onclick="window.location.href='admin-finance.html'" class="admin-only">💰 Keuangan</button>
+            <button onclick="window.location.href='admin-package.html'" class="admin-only">📦 Paket Layanan</button>
+            <button onclick="window.location.href='admin-settings.html'" class="admin-only">⚙️ Pengaturan</button>
+        </div>
+
+        <h2 style="margin:0 0 20px 0; font-size: 1.5rem;">Ringkasan Studio</h2>
+        <div class="grid-3" style="margin-bottom: 20px;">
+            <div class="stat-box"><div style="font-size:11px; color:var(--text-muted); font-weight:700;">TOTAL PROJECT AKTIF</div><div id="dash-tot-proj" style="font-size:24px; font-weight:800; color:var(--primary);">0</div></div>
+            <div class="stat-box admin-only"><div style="font-size:11px; color:var(--text-muted); font-weight:700;">PENDING BOOKING</div><div id="dash-tot-book" style="font-size:24px; font-weight:800; color:var(--warning);">0</div></div>
+            <div class="stat-box admin-only" style="border-left-color: var(--success);"><div style="font-size:11px; color:var(--text-muted); font-weight:700;">ESTIMASI OMZET (IDR)</div><div id="dash-tot-omzet" style="font-size:24px; font-weight:800; color:var(--success);">Rp 0</div></div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom: 20px;">
+            <div class="card admin-only" style="padding: 20px;"><h3 style="margin:0 0 15px 0; font-size:13px;">Tren Order per Bulan</h3><div class="chart-wrapper"><canvas id="chartBulan"></canvas></div></div>
+            <div class="card admin-only" style="padding: 20px;"><h3 style="margin:0 0 15px 0; font-size:13px;">Perbandingan Kategori</h3><div class="chart-wrapper"><canvas id="chartPaket"></canvas></div></div>
+        </div>
+        
+        <div class="card" style="padding: 20px;"><h3 style="margin:0 0 15px 0; font-size:13px;">Project Selesai Terbaru</h3><div class="table-wrapper" style="margin-top: 0;"><table><thead><tr><th>Client</th><th>Tanggal Sesi</th><th>Kategori</th><th>Status</th></tr></thead><tbody id="recent-table"></tbody></table></div></div>
+    </div>
+
+    <footer style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 12px; margin-top: auto;"><b>Thetalebearing Studio Management System</b> &copy; 2026<br>Dikembangkan secara eksklusif untuk operasional internal.</footer>
+    <div id="profile-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; text-align: center;"><div style="font-size: 50px; margin-bottom: 10px;">👤</div><h2 id="prof-name" style="margin:0;">Name</h2><p id="prof-role" style="color:var(--primary); font-weight:700; font-size:12px; text-transform:uppercase; margin:5px 0 20px 0;">Role</p><button onclick="closeModal('profile-modal')" class="btn-sec" style="width:100%; margin-top:20px;">Tutup</button></div></div>
+
+<script src="database.js"></script>
+<script>
+    const session = getSession(); if(!session || !['admin', 'editor', 'superadmin'].includes(session.role)) window.location.href = 'index.html';
+    document.getElementById('display-user').innerText = session.name; document.getElementById('prof-name').innerText = session.name; document.getElementById('prof-role').innerText = session.role;
+    if(session.role === 'editor') document.querySelectorAll('.admin-only').forEach(el => el.classList.add('editor-restricted'));
+    updateNotifBadge();
+
+    function renderDashboard() {
+        const clients = getClients(); const bks = getBookings();
+        document.getElementById('dash-tot-proj').innerText = clients.length;
+        
+        if(session.role !== 'editor') {
+            document.getElementById('dash-tot-book').innerText = bks.filter(b=>!b.isAccepted).length;
+            let omzet = 0; clients.forEach(c => omzet += (c.financeTotal||0)); document.getElementById('dash-tot-omzet').innerText = formatRupiah(omzet);
+            const mData = {}; const pData = {'Wedding':0, 'Graduation':0};
+            clients.forEach(c => { if(c.date) { const m = c.date.substring(0, 7); mData[m] = (mData[m]||0)+1; } if(c.category==='Wedding') pData['Wedding']++; if(c.category==='Graduation') pData['Graduation']++; });
+            new Chart(document.getElementById('chartBulan'), { type: 'bar', data: { labels: Object.keys(mData).sort(), datasets: [{ label: 'Order', data: Object.keys(mData).sort().map(k=>mData[k]), backgroundColor: getSettings().primaryColor||'#4338CA' }] }, options: { maintainAspectRatio: false } });
+            new Chart(document.getElementById('chartPaket'), { type: 'doughnut', data: { labels: ['Wedding', 'Graduation'], datasets: [{ data: [pData['Wedding'], pData['Graduation']], backgroundColor: ['#DC2626', '#059669'] }] }, options: { maintainAspectRatio: false } });
+        }
+        
+        const done = clients.filter(c => c.isFinished).reverse().slice(0, 5);
+        document.getElementById('recent-table').innerHTML = done.length ? done.map(c => `<tr><td style="padding:12px 0; font-weight:700;">${c.name}</td><td>${c.date||'-'}</td><td><span style="background:var(--primary-soft); color:var(--primary); padding:2px 6px; border-radius:4px; font-size:10px;">${c.category}</span></td><td style="color:var(--success); font-weight:bold;">Selesai</td></tr>`).join('') : `<tr><td colspan="4">Belum ada project selesai.</td></tr>`;
+    }
+    function openProfile() { document.getElementById('profile-modal').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    renderDashboard();
+</script>
+</body></html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Pengaturan - Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <style>.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }</style>
+</head>
+<body>
+    <nav><div class="brand">Thetalebearing</div><div class="nav-actions"><button onclick="openProfile()" class="profile-btn">👤 <span id="display-user"></span></button><button onclick="logout()" class="btn-danger" style="padding:6px 12px; font-size:11px;">Logout</button></div></nav>
+
+    <div class="container">
+        <div class="admin-tabs">
+            <button onclick="window.location.href='admin.html'">📊 Dashboard</button>
+            <button onclick="window.location.href='admin-project.html'">📁 Project & Booking</button>
+            <button onclick="window.location.href='admin-schedule.html'" class="admin-only">⏰ Jadwal & Kuota</button>
+            <button onclick="window.location.href='admin-finance.html'" class="admin-only">💰 Keuangan</button>
+            <button onclick="window.location.href='admin-package.html'" class="admin-only">📦 Paket Layanan</button>
+            <button onclick="window.location.href='admin-settings.html'" class="active admin-only">⚙️ Pengaturan</button>
+        </div>
+
+        <div class="grid-2">
+            <div class="card" style="padding: 20px;">
+                <h3 style="margin:0 0 15px 0; font-size:14px;">Identitas & Sistem</h3>
+                <div class="form-group"><label>Nama Brand Website</label><input type="text" id="set-brand"></div>
+                <div class="form-group"><label>Nomor WhatsApp Pusat</label><input type="text" id="set-wa"></div>
+                <div class="form-group"><label>Daftar Rekening (Enter untuk baris baru)</label><textarea id="set-bank" rows="3"></textarea></div>
+                <div class="form-group"><label>Daftar Lokasi Pilihan Client (Enter untuk baris baru)</label><textarea id="set-locations" rows="5" placeholder="UNSOED Purwokerto&#10;UMP Purwokerto"></textarea></div>
+                
+                <div style="display:flex; gap:10px; margin-bottom: 15px;"><div style="flex:1;"><label>Warna Tombol</label><input type="color" id="set-primary" style="height:40px; padding:0;"></div><div style="flex:1;"><label>Warna Latar</label><input type="color" id="set-bg" style="height:40px; padding:0;"></div></div>
+                <button onclick="saveWebSettings()" class="btn-primary" style="width:100%;">Simpan Pengaturan</button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="card superadmin-only" style="padding: 20px;">
+                    <h3 style="margin:0 0 15px 0; font-size:14px;">Otoritas Karyawan (Superadmin Area)</h3>
+                    <div id="admin-list" style="background:#F9FAFB; padding:10px; margin-bottom:15px; border:1px solid var(--border); border-radius:var(--radius); max-height:200px; overflow-y:auto;"></div>
+                    
+                    <h4 style="font-size:12px; margin-bottom:10px;">Tambah / Edit Akun</h4>
+                    <input type="hidden" id="edit-adm-idx" value="-1">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <input type="text" id="new-admin-user" placeholder="Username (Wajib)">
+                        <input type="text" id="new-admin-pass" placeholder="Password (Wajib)">
+                    </div>
+                    <div style="margin-bottom: 15px; font-size: 13px;">
+                        <label style="display:inline-block; margin-right:15px;"><input type="radio" name="new-role" value="editor" checked> Editor (View Only)</label>
+                        <label style="display:inline-block; margin-right:15px;"><input type="radio" name="new-role" value="admin"> Admin (Operasional)</label>
+                        <label style="display:inline-block;"><input type="radio" name="new-role" value="superadmin"> Superadmin</label>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="saveAdmin()" class="btn-success" style="flex:2;" id="btn-save-admin">+ Tambah Akun</button>
+                        <button onclick="cancelEditAdmin()" class="btn-sec" style="flex:1;">Batal</button>
+                    </div>
+                </div>
+
+                <div class="card" style="padding: 20px; border-left: 4px solid var(--danger);">
+                    <h3 style="margin:0 0 15px 0; font-size:14px; color:var(--danger);">Ubah Password Pribadi Saya</h3>
+                    <input type="password" id="my-new-pass" placeholder="Ketik Password Baru Anda">
+                    <button onclick="changeMyPassword()" class="btn-danger" style="width:100%; margin-top:10px;">Ganti Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; text-align: center;"><div style="font-size: 50px; margin-bottom: 10px;">👤</div><h2 id="prof-name" style="margin:0;">Name</h2><p id="prof-role" style="color:var(--primary); font-weight:700; font-size:12px; text-transform:uppercase; margin:5px 0 20px 0;">Role</p><button onclick="closeModal('profile-modal')" class="btn-sec" style="width:100%; margin-top:20px;">Tutup</button></div></div>
+    <footer style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 12px; margin-top: auto;"><b>Thetalebearing Studio Management System</b> &copy; 2026</footer>
+
+<script src="database.js"></script>
+<script>
+    const session = getSession(); if(!session || !['admin', 'superadmin'].includes(session.role)) window.location.href = 'index.html';
+    document.getElementById('display-user').innerText = session.name; document.getElementById('prof-name').innerText = session.name; document.getElementById('prof-role').innerText = session.role;
+    if(session.role !== 'superadmin') document.querySelectorAll('.superadmin-only').forEach(el => el.classList.add('hidden'));
+
+    let admins = getAdmins(); let settings = getSettings();
+
+    function loadSettings() {
+        document.getElementById('set-brand').value = settings.brandName || "Thetalebearing";
+        document.getElementById('set-wa').value = settings.wa || "";
+        document.getElementById('set-bank').value = settings.bankAccount || "";
+        document.getElementById('set-locations').value = settings.locations || "";
+        document.getElementById('set-primary').value = settings.primaryColor || "#4338CA";
+        document.getElementById('set-bg').value = settings.bgColor || "#F3F4F6";
+        renderAdminList();
+    }
+    function saveWebSettings() { 
+        settings.brandName = document.getElementById('set-brand').value; settings.wa = document.getElementById('set-wa').value.replace(/[^0-9]/g, ''); 
+        settings.bankAccount = document.getElementById('set-bank').value; settings.locations = document.getElementById('set-locations').value;
+        settings.primaryColor = document.getElementById('set-primary').value; settings.bgColor = document.getElementById('set-bg').value; 
+        saveSettings(settings); alert("Tersimpan!"); 
+    }
+
+    function renderAdminList() { document.getElementById('admin-list').innerHTML = admins.map((a, i) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #e2e8f0;"><div><span style="font-weight:700;font-size:13px;">${a.user}</span><br><span style="font-size:10px;color:gray;text-transform:uppercase;">${a.role}</span></div>${session.role === 'superadmin' ? `<div><button onclick="editAdmin(${i})" class="btn-sec" style="padding:4px 8px; font-size:10px;">Edit Role</button> <button onclick="removeAdmin(${i})" class="btn-danger" style="padding:4px 8px; font-size:10px;">Hapus</button></div>` : ''}</div>`).join(''); }
+    
+    function editAdmin(i) { document.getElementById('edit-adm-idx').value = i; document.getElementById('new-admin-user').value = admins[i].user; document.getElementById('new-admin-pass').value = admins[i].pass; document.querySelector(`input[name="new-role"][value="${admins[i].role || 'editor'}"]`).checked = true; document.getElementById('btn-save-admin').innerText = "Update Karyawan"; }
+    function cancelEditAdmin() { document.getElementById('edit-adm-idx').value = "-1"; document.getElementById('new-admin-user').value=''; document.getElementById('new-admin-pass').value=''; document.getElementById('btn-save-admin').innerText = "+ Tambah Akun"; }
+    function saveAdmin() { if(session.role !== 'superadmin') return alert("Hanya Superadmin."); const idx = parseInt(document.getElementById('edit-adm-idx').value); const u = document.getElementById('new-admin-user').value.trim(); const p = document.getElementById('new-admin-pass').value.trim(); const r = document.querySelector('input[name="new-role"]:checked').value; if(!u||!p) return alert("Wajib diisi!"); if(idx > -1) { admins[idx] = {user:u, pass:p, role:r}; } else { admins.push({user:u, pass:p, role:r}); } saveAdmins(admins); cancelEditAdmin(); renderAdminList(); }
+    function removeAdmin(i) { if(confirm("Hapus karyawan ini?")) { admins.splice(i,1); saveAdmins(admins); renderAdminList(); } }
+    function changeMyPassword() { const newPass = document.getElementById('my-new-pass').value.trim(); if(!newPass) return alert("Kosong!"); let conf = prompt("Ketik 'GANTI' untuk melanjutkan:"); if(conf !== 'GANTI') return; let myAccount = admins.find(a => a.user === session.name); myAccount.pass = newPass; saveAdmins(admins); alert("Diubah! Login ulang."); logout(); }
+    function openProfile() { document.getElementById('profile-modal').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    loadSettings();
+</script>
+</body></html>

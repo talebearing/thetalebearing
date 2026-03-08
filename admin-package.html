@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Paket - Admin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav><div class="brand">Thetalebearing</div><div class="nav-actions"><button onclick="openProfile()" class="profile-btn">👤 <span id="display-user"></span><span id="notif-badge" class="badge-notif hidden">0</span></button><button onclick="logout()" class="btn-danger" style="padding:6px 12px; font-size:11px;">Logout</button></div></nav>
+
+    <div class="container">
+        <div class="admin-tabs">
+            <button onclick="window.location.href='admin.html'">📊 Dashboard</button>
+            <button onclick="window.location.href='admin-project.html'">📁 Project & Booking</button>
+            <button onclick="window.location.href='admin-schedule.html'" class="admin-only">⏰ Jadwal & Kuota</button>
+            <button onclick="window.location.href='admin-finance.html'" class="admin-only">💰 Keuangan</button>
+            <button onclick="window.location.href='admin-package.html'" class="active admin-only">📦 Paket Layanan</button>
+            <button onclick="window.location.href='admin-settings.html'" class="admin-only">⚙️ Pengaturan</button>
+        </div>
+
+        <div class="card" style="margin-bottom: 20px;">
+            <h2 style="margin:0 0 20px 0;">Manajemen Paket Utama</h2>
+            <select id="pkg-cat" onchange="renderPackages()" style="margin-bottom: 15px; font-weight: bold; width: 200px;"><option>Graduation</option><option>Wedding</option><option>Personal/Studio</option><option>Event</option></select>
+            <div id="pkg-list" style="background:#F9FAFB; padding:15px; border:1px solid var(--border); margin-bottom: 20px; border-radius: var(--radius); max-height:250px; overflow-y:auto;"></div>
+            
+            <h3 style="font-size:12px; margin-bottom: 10px;">Tambah / Edit Paket</h3>
+            <input type="hidden" id="edit-pkg-id" value="">
+            <div style="display:grid; grid-template-columns: 2fr 1.5fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+                <input type="text" id="p-name" placeholder="Nama Paket">
+                <div class="currency-input"><input type="text" id="p-price" placeholder="Harga" oninput="maskRupiah(this)"></div>
+                <input type="number" id="p-quota" placeholder="Max Foto">
+                <input type="text" id="p-duration" placeholder="Durasi (2 Jam)">
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <input type="text" id="p-details" placeholder="Keterangan / Fasilitas" style="flex:1;">
+                <button onclick="savePackage()" class="btn-success">Simpan Paket</button>
+                <button onclick="cancelEditPkg()" class="btn-sec">Batal</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="margin:0 0 20px 0;">Manajemen Layanan Tambahan (Add-ons)</h2>
+            <div id="addon-list" style="background:#F9FAFB; padding:15px; border:1px solid var(--border); margin-bottom: 20px; border-radius: var(--radius); max-height:200px; overflow-y:auto;"></div>
+            
+            <h3 style="font-size:12px; margin-bottom: 10px;">Tambah / Edit Add-on</h3>
+            <input type="hidden" id="edit-addon-id" value="">
+            <div style="display:flex; gap:10px;">
+                <select id="a-cat" style="flex:1;"><option>Graduation</option><option>Wedding</option><option>Personal/Studio</option><option>Event</option></select>
+                <input type="text" id="a-name" placeholder="Nama Add-on" style="flex:2;">
+                <div class="currency-input" style="flex:1;"><input type="text" id="a-price" placeholder="Harga" oninput="maskRupiah(this)"></div>
+                <input type="number" id="a-time" placeholder="Waktu(+Mnt)" style="flex:1;">
+                <button onclick="saveAddon()" class="btn-success">Simpan Add-on</button>
+                <button onclick="cancelEditAddon()" class="btn-sec">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 12px; margin-top: auto;"><b>Thetalebearing Studio Management System</b> &copy; 2026</footer>
+    <div id="profile-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; text-align: center;"><div style="font-size: 50px; margin-bottom: 10px;">👤</div><h2 id="prof-name" style="margin:0;">Name</h2><p id="prof-role" style="color:var(--primary); font-weight:700; font-size:12px; text-transform:uppercase; margin:5px 0 20px 0;">Role</p><button onclick="closeModal('profile-modal')" class="btn-sec" style="width:100%; margin-top:20px;">Tutup</button></div></div>
+
+<script src="database.js"></script>
+<script>
+    const session = getSession(); if(!session || !['admin', 'superadmin'].includes(session.role)) window.location.href = 'index.html';
+    document.getElementById('display-user').innerText = session.name; document.getElementById('prof-name').innerText = session.name; document.getElementById('prof-role').innerText = session.role;
+    updateNotifBadge();
+    
+    let packages = getPackages(); let addonsData = getAddons();
+
+    function renderPackages() {
+        const cat = document.getElementById('pkg-cat').value;
+        document.getElementById('pkg-list').innerHTML = packages.filter(p=>p.category===cat).map(p => {
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);"><div><strong>${p.name}</strong> <span style="font-size:11px; background:var(--primary-soft); padding:2px 5px;">${p.duration||'-'}</span><br><span style="font-size:12px; color:var(--primary); font-weight:700;">${formatRupiah(p.price)}</span> | <span style="font-size:11px; color:var(--text-muted);">${p.details||'-'}</span></div><div><button onclick="editPackage(${p.id})" class="btn-sec" style="padding:5px 10px; font-size:11px;">Edit</button> <button onclick="delPackage(${p.id})" class="btn-danger" style="padding:5px 10px; font-size:11px;">X</button></div></div>`;
+        }).join('');
+        
+        document.getElementById('addon-list').innerHTML = addonsData.filter(a=>a.category===cat).map(a => `<div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);"><div><strong>${a.name}</strong><br><span style="font-size:12px; color:var(--text-muted);">${formatRupiah(a.price)} | +${a.time} Mnt</span></div><div><button onclick="editAddon(${a.id})" class="btn-sec" style="padding:5px 10px; font-size:11px;">Edit</button> <button onclick="delAddon(${a.id})" class="btn-danger" style="padding:5px 10px; font-size:11px;">X</button></div></div>`).join('');
+    }
+
+    function editPackage(id) { const p = packages.find(x => x.id === id); if(p) { document.getElementById('edit-pkg-id').value = id; document.getElementById('p-name').value = p.name; let pr = document.getElementById('p-price'); pr.value = p.price; maskRupiah(pr); document.getElementById('p-quota').value = p.quota; document.getElementById('p-duration').value = p.duration; document.getElementById('p-details').value = p.details; } }
+    function cancelEditPkg() { document.getElementById('edit-pkg-id').value = ""; document.querySelectorAll('#p-name, #p-price, #p-quota, #p-duration, #p-details').forEach(i=>i.value=''); }
+    function savePackage() { const id = document.getElementById('edit-pkg-id').value; const cat = document.getElementById('pkg-cat').value; const n = document.getElementById('p-name').value; const p = unmask(document.getElementById('p-price').value); const q = parseInt(document.getElementById('p-quota').value); const d = document.getElementById('p-duration').value; const det = document.getElementById('p-details').value; if(!n||isNaN(p)) return; if(id) { let idx = packages.findIndex(x=>x.id==id); packages[idx] = {id:parseInt(id), category:cat, name:n, price:p, quota:q||0, duration:d, details:det}; } else { packages.push({id:Date.now(), category:cat, name:n, price:p, quota:q||0, duration:d, details:det}); } savePackages(packages); renderPackages(); cancelEditPkg(); }
+    function delPackage(id) { packages = packages.filter(x=>x.id!==id); savePackages(packages); renderPackages(); }
+    
+    function editAddon(id) { const a = addonsData.find(x => x.id === id); if(a) { document.getElementById('edit-addon-id').value = id; document.getElementById('a-cat').value = a.category; document.getElementById('a-name').value = a.name; let pr = document.getElementById('a-price'); pr.value = a.price; maskRupiah(pr); document.getElementById('a-time').value = a.time; } }
+    function cancelEditAddon() { document.getElementById('edit-addon-id').value = ""; document.querySelectorAll('#a-name, #a-price, #a-time').forEach(i=>i.value=''); }
+    function saveAddon() { const id = document.getElementById('edit-addon-id').value; const cat = document.getElementById('a-cat').value; const n = document.getElementById('a-name').value; const p = unmask(document.getElementById('a-price').value); const t = parseInt(document.getElementById('a-time').value); if(!n||isNaN(p)) return; if(id) { let idx = addonsData.findIndex(x=>x.id==id); addonsData[idx] = {id:parseInt(id), category:cat, name:n, price:p, time:t||0}; } else { addonsData.push({id:Date.now(), category:cat, name:n, price:p, time:t||0}); } saveAddons(addonsData); renderPackages(); cancelEditAddon(); }
+    function delAddon(id) { addonsData = addonsData.filter(x=>x.id!==id); saveAddons(addonsData); renderPackages(); }
+    
+    function openProfile() { document.getElementById('profile-modal').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    renderPackages();
+</script>
+</body></html>

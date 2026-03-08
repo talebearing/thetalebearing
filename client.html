@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Galeri - Thetalebearing</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="display: flex; flex-direction: column; min-height: 100vh;">
+    <nav>
+        <div class="brand">Thetalebearing</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <button onclick="contactAdmin()" class="btn-wa">Hubungi Admin</button>
+            <button onclick="logout()" class="btn-danger">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container" style="flex: 1;">
+        <div id="locked-banner" class="banner hidden"><div>Terima kasih. Pilihan Anda sudah kami simpan dan kunci. Editor Thetalebearing akan segera memproses foto Anda.</div></div>
+        <div id="download-section" class="card hidden" style="margin-bottom: 25px; background: #ECFDF5; border: 1px solid #A7F3D0; text-align: center;"><h2 style="margin:0 0 10px 0; color: #065F46; font-size: 1.4rem;">Foto Anda Sudah Selesai Diedit</h2><button id="download-final-btn" class="btn-success" style="font-size: 14px; padding: 14px 30px;">Download Hasil Edit</button></div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+                <div>
+                    <h2 id="client-greeting" style="margin:0; font-weight: 700; color: var(--primary);">Halo,</h2>
+                    <p id="client-session-info" style="color:var(--text-muted); font-size:12px; margin:5px 0 0 0;"></p>
+                </div>
+                <div style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;"><button onclick="downloadAllMentahan()" class="btn-sec">Download Semua</button><div style="text-align: right; margin-left: 10px;"><div style="font-size:10px; font-weight:700; color:var(--text-muted);">FOTO TERPILIH</div><div style="font-size:20px; font-weight:700; color:var(--primary); line-height: 1;"><span id="count-sel">0</span> / <span id="max-sel">0</span></div></div><button id="btn-submit-final" onclick="submitFinalSelection()" class="btn-primary">Kunci Pilihan</button></div>
+            </div>
+        </div>
+
+        <div id="client-gallery" class="gallery"></div>
+    </div>
+
+    <div id="image-modal" class="modal-overlay hidden" onclick="closeModal('image-modal')"><div class="img-wrapper" style="border-radius: 8px;"><img id="preview-img" src="" style="max-height: 85vh;"><div class="watermark" style="font-size: 3rem;">Thetalebearing</div></div><p style="position: absolute; bottom: 20px; color: white;">Klik di mana saja untuk menutup</p></div>
+
+    <footer class="footer-client">
+        <div style="font-weight: 800; font-size: 16px; margin-bottom: 5px; color: var(--primary);" class="brand">Thetalebearing</div>
+        <div style="margin-bottom: 15px;">Professional Photography Studio</div>
+        <div>
+            <a href="https://instagram.com/thetalebearing" target="_blank">📸 @thetalebearing</a> | 
+            <a href="https://instagram.com/talebearing.grad" target="_blank">🎓 @talebearing.grad</a>
+        </div>
+        <div style="margin-top: 25px; font-size: 11px;">&copy; 2026 Hak Cipta Dilindungi.</div>
+    </footer>
+
+<script src="database.js"></script>
+<script>
+    const session = getSession(); if(!session || session.role !== 'client') window.location.href = 'index.html';
+    let clients = getClients(); let myProject = clients.find(c => c.user === session.user);
+
+    function contactAdmin() { window.open('https://wa.me/' + getSettings().wa, '_blank'); }
+
+    const dummyPhotos = [ {id: "PHOTO_001.jpg", url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"}, {id: "PHOTO_002.jpg", url: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"} ];
+
+    function renderClient() {
+        if(!myProject.selections) myProject.selections = {};
+        document.getElementById('client-greeting').innerHTML = `Halo Kak ${myProject.name}`; 
+        document.getElementById('client-session-info').innerText = `Paket: ${myProject.paket || '-'} | Sesi: ${myProject.date || '-'} | Lokasi: ${myProject.location || '-'}`;
+        document.getElementById('count-sel').innerText = Object.keys(myProject.selections).length; document.getElementById('max-sel').innerText = myProject.maxSelect;
+        document.getElementById('locked-banner').classList.toggle('hidden', !myProject.isSubmitted); document.getElementById('btn-submit-final').classList.toggle('hidden', myProject.isSubmitted);
+        if(myProject.isFinished && myProject.finalLink) { document.getElementById('download-section').classList.remove('hidden'); document.getElementById('download-final-btn').onclick = () => window.open(myProject.finalLink, '_blank'); }
+
+        document.getElementById('client-gallery').innerHTML = dummyPhotos.map(p => {
+            const isSel = myProject.selections[p.id] !== undefined;
+            return `<div class="photo-card ${myProject.isSubmitted ? 'locked' : ''} ${isSel ? 'selected' : ''}"><div class="img-wrapper" onclick="openPreview('${p.url}')"><img src="${p.url}"><div class="watermark">Thetalebearing</div></div><div class="card-body"><div style="font-size:12px; font-weight:700; margin-bottom:8px; text-align:center;">${p.id}</div>${!myProject.isSubmitted ? `<input type="text" placeholder="Catatan edit (opsional)" value="${myProject.selections[p.id] || ''}" onchange="updateNote('${p.id}', this.value)" style="font-size:12px; padding:10px; margin-bottom:12px;">` : `<div style="flex:1;"></div>`}<div style="display: flex; gap: 8px; margin-top:auto;"><button onclick="downloadIndividual('${p.url}', '${p.id}')" class="btn-sec" style="padding:10px; font-size: 11px; flex: 0.5;">Download</button>${!myProject.isSubmitted ? `<button onclick="toggleSelection('${p.id}')" style="flex:1; background:${isSel ? 'var(--danger)' : 'var(--primary)'}; color:white;">${isSel ? 'Batal' : 'Pilih Foto'}</button>` : (isSel ? `<div style="flex:1; text-align:center; padding:10px; font-size:11px; color:var(--success); font-weight:700; background:var(--success-soft); border-radius:6px;">TERPILIH</div>`:'')}</div></div></div>`;
+        }).join('');
+    }
+
+    function toggleSelection(id) { if(myProject.isSubmitted) return; const count = Object.keys(myProject.selections).length; if(myProject.selections[id] !== undefined) delete myProject.selections[id]; else { if(count >= myProject.maxSelect) return alert(`Maksimal ${myProject.maxSelect} foto.`); myProject.selections[id] = ""; } saveProject(); renderClient(); }
+    function updateNote(id, val) { myProject.selections[id] = val; saveProject(); }
+    function submitFinalSelection() { const count = Object.keys(myProject.selections).length; if(count === 0) return alert("Belum memilih foto."); if(myProject.maxSelect > 0 && count < myProject.maxSelect) return alert(`Harus memilih ${myProject.maxSelect} foto.`); if(confirm("Kunci pilihan foto ini?")) { myProject.isSubmitted = true; saveProject(); renderClient(); } }
+    function saveProject() { const i = clients.findIndex(c => c.user === session.user); if(i > -1) { clients[i] = myProject; saveClients(clients); } }
+    function openPreview(url) { document.getElementById('preview-img').src = url; document.getElementById('image-modal').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    function downloadIndividual(url, fname) { const a = document.createElement('a'); a.href = url; a.download = fname; a.target='_blank'; document.body.appendChild(a); a.click(); }
+    function downloadAllMentahan() { if(confirm("Download semua foto mentah?")) dummyPhotos.forEach((p, i) => setTimeout(() => downloadIndividual(p.url, p.id), i * 800)); }
+
+    renderClient();
+</script>
+</body>
+</html>

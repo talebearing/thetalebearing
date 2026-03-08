@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Booking - Thetalebearing</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div style="position: absolute; top: 20px; right: 20px; z-index: 100;"><button onclick="toggleLang()" class="lang-btn" data-i18n="t_lang">🌐 English</button></div>
+
+    <div class="container" style="max-width: 700px; margin: 40px auto;">
+        <div class="card">
+            <button onclick="window.location.href='index.html'" class="btn-sec" style="margin-bottom: 20px;" data-i18n="t_back">← Kembali</button>
+            <h1 class="brand" style="margin: 0;">Thetalebearing</h1>
+            <p style="color:var(--text-muted); font-size:13px; margin-bottom: 25px;" data-i18n="t_book_desc">Lengkapi data diri dan pilih paket impian Anda.</p>
+            
+            <div class="grid-2">
+                <div class="form-group"><label data-i18n="t_name">Nama Lengkap / Instansi</label><input type="text" id="b-name" placeholder="Nama Anda"></div>
+                <div class="form-group"><label data-i18n="t_wa">Nomor WhatsApp Aktif</label><input type="text" id="b-wa" placeholder="08123..."></div>
+            </div>
+
+            <div class="form-group"><label data-i18n="t_cat">Kategori Sesi</label><select id="b-cat" onchange="renderPackages()">
+                <option value="Graduation">🎓 Graduation</option><option value="Wedding">💍 Wedding / Prewed</option>
+                <option value="Personal/Studio">📸 Personal / Studio</option><option value="Event">🎉 Event Lainnya</option>
+            </select></div>
+            
+            <label data-i18n="t_choose_pkg">Pilih Paket</label>
+            <div id="pkg-container" class="radio-card-grid"></div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; border-top: 1px solid var(--border); padding-top: 15px;">
+                <div class="form-group"><label data-i18n="t_date">Tanggal Sesi</label><input type="date" id="b-date" onchange="validateSlots()"></div>
+                <div class="form-group"><label data-i18n="t_start">Jam Mulai</label><select id="b-time-start" onchange="calcTotal()"></select></div>
+                <div class="form-group"><label data-i18n="t_end">Jam Selesai</label><input type="text" id="b-time-end" readonly style="background:#E5E7EB;"></div>
+            </div>
+
+            <div class="form-group" style="background:#F9FAFB; padding:15px; border-radius:var(--radius); border:1px solid var(--border);">
+                <label data-i18n="t_loc">Lokasi Pemotretan</label>
+                <select id="b-location" onchange="toggleCustomLoc()"></select>
+                
+                <div id="custom-loc-div" class="hidden" style="margin-top:15px; border-top:1px dashed var(--border); padding-top:15px;">
+                    <label data-i18n="t_loc_other">Tulis Nama Lokasi Anda</label>
+                    <input type="text" id="b-custom-loc" placeholder="Contoh: Gedung Soemardjito" style="margin-bottom:10px;">
+                    <label data-i18n="t_maps">Link Google Maps (Opsional)</label>
+                    <input type="text" id="b-maps-link" placeholder="https://maps.app.goo.gl/...">
+                </div>
+
+                <div id="grad-warning" class="hidden" style="margin-top:15px; padding:10px; background:#FEF2F2; border-left:3px solid var(--danger); font-size:11px; color:var(--danger); line-height:1.5; border-radius:4px;" data-i18n="t_grad_warn">
+                    ⚠️ <b>Perhatian Khusus Graduation:</b> Jika lokasi pemotretan berada di luar area kampus atau hotel tempat prosesi wisuda, admin/fotografer berhak meminta tambahan biaya transportasi. Untuk lebih jelasnya, silakan konfirmasi kembali kepada admin.
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 10px;"><label data-i18n="t_addons">Layanan Tambahan / Add-ons</label><div id="addon-container"></div></div>
+
+            <div style="background: #ECFDF5; border: 1px solid #A7F3D0; padding: 15px; border-radius: var(--radius); text-align: center; margin-top: 15px;">
+                <div style="font-size: 11px; color: #065F46; font-weight: 700;" data-i18n="t_est">ESTIMASI TAGIHAN (IDR)</div>
+                <div id="b-price-display" style="font-size: 28px; font-weight: 800; color: var(--success);">Rp 0</div>
+                <div style="font-size: 11px; color: #065F46; margin-top: 5px;" data-i18n="t_dp_info">*Wajib melakukan konfirmasi pembayaran DP untuk mengunci jadwal.</div>
+            </div>
+            
+            <div style="background: #F9FAFB; padding: 15px; border: 1px dashed var(--border); border-radius: var(--radius); margin-top: 15px; text-align: center;">
+                <p style="font-size: 12px; margin: 0 0 5px 0; color: var(--text-muted);" data-i18n="t_bank">Transfer Pembayaran ke Rekening Kami:</p>
+                <p style="font-size: 14px; font-weight: 700; margin: 0; color: var(--text-main);" id="b-bank-info">Memuat...</p>
+            </div>
+
+            <button onclick="submitBooking()" class="btn-primary" style="width:100%; padding: 15px; margin-top: 15px; font-size: 15px;" data-i18n="t_submit_wa">Kirim & Konfirmasi via WA</button>
+        </div>
+    </div>
+
+<script src="database.js"></script>
+<script>
+    let selectedPackage = null; let totalMinsCache = 0; let settings = getSettings();
+    document.getElementById('b-bank-info').innerHTML = (settings.bankAccount || "BCA 123456789 a.n Thetalebearing").replace(/\n/g, '<br>');
+    
+    let locSelect = document.getElementById('b-location');
+    locSelect.innerHTML = '<option value="">-- Pilih Lokasi --</option>';
+    if(settings.locations) {
+        settings.locations.split('\n').forEach(loc => { if(loc.trim()) locSelect.innerHTML += `<option value="${loc.trim()}">${loc.trim()}</option>`; });
+    }
+    locSelect.innerHTML += '<option value="Lainnya">📍 Lokasi Lainnya (Tulis Sendiri)...</option>';
+
+    function toggleCustomLoc() {
+        if(locSelect.value === 'Lainnya') document.getElementById('custom-loc-div').classList.remove('hidden');
+        else document.getElementById('custom-loc-div').classList.add('hidden');
+    }
+
+    function generateTimeOptions() {
+        let sel = document.getElementById('b-time-start'); let oldVal = sel.value; sel.innerHTML = '<option value="">-- Jam --</option>';
+        let start = timeToMins(settings.opStart || '08:00'); let end = timeToMins(settings.opEnd || '20:00');
+        for(let i=start; i<=end; i+=30) { let t = minsToTime(i); sel.innerHTML += `<option value="${t}">${t}</option>`; }
+        if(oldVal) sel.value = oldVal;
+    }
+
+    function renderPackages() {
+        const cat = document.getElementById('b-cat').value; 
+        
+        // MUNCULKAN PERINGATAN JIKA KATEGORI = GRADUATION
+        if(cat === 'Graduation') {
+            document.getElementById('grad-warning').classList.remove('hidden');
+        } else {
+            document.getElementById('grad-warning').classList.add('hidden');
+        }
+
+        const pkgs = getPackages().filter(p => p.category === cat);
+        document.getElementById('pkg-container').innerHTML = pkgs.length ? pkgs.map(p => `<div class="radio-card" id="card-${p.id}" onclick="selectPackage(${p.id}, ${p.price}, '${p.name}', '${p.duration}')"><h3 style="margin:0 0 5px 0;">${p.name}</h3><p style="margin:0; font-weight:800; color:var(--primary); font-size:16px;">${formatRupiah(p.price)}</p><small style="color:var(--text-muted); display:block; margin-top:8px; line-height:1.4;">⏳ ${p.duration} | 📷 ${p.quota} Edit<br><span style="color:var(--text-main); font-weight:500; display:inline-block; margin-top:5px;">✨ ${p.details || ''}</span></small></div>`).join('') : '<p style="font-size:13px; color:gray;">Belum ada paket.</p>';
+        const addons = getAddons().filter(a => a.category === cat);
+        document.getElementById('addon-container').innerHTML = addons.map(a => `<label class="addon-box"><input type="checkbox" class="addon-cb" value="${a.name}" data-price="${a.price}" data-time="${a.time}" onchange="calcTotal()"> ${a.name} (+${formatRupiah(a.price)})</label>`).join('') || '<span style="font-size:12px; color:gray;">Tidak ada addon khusus kategori ini.</span>';
+        selectedPackage = null; calcTotal(); generateTimeOptions();
+    }
+
+    function selectPackage(id, price, name, duration) { document.querySelectorAll('.radio-card').forEach(el => el.classList.remove('active')); document.getElementById(`card-${id}`).classList.add('active'); selectedPackage = { name, price, duration }; calcTotal(); }
+
+    function calcTotal() {
+        let basePrice = selectedPackage ? selectedPackage.price : 0; totalMinsCache = selectedPackage ? parseDurationToMins(selectedPackage.duration) : 0; let addonsText = [];
+        document.querySelectorAll('.addon-cb:checked').forEach(cb => { basePrice += parseInt(cb.dataset.price); totalMinsCache += parseInt(cb.dataset.time); addonsText.push(cb.value); });
+        document.getElementById('b-price-display').innerText = formatRupiah(basePrice);
+        const tStart = document.getElementById('b-time-start').value; if(tStart) document.getElementById('b-time-end').value = minsToTime(timeToMins(tStart) + totalMinsCache);
+        validateSlots(); return { basePrice, addonsText };
+    }
+
+    function validateSlots() {
+        let date = document.getElementById('b-date').value; let sel = document.getElementById('b-time-start');
+        if(!date || !totalMinsCache) return;
+        if(isDayBlocked(date)) { alert(`Mohon Maaf 🙏\nStudio kami TUTUP / LIBUR pada tanggal ${date}.\nSilakan pilih tanggal lain.`); document.getElementById('b-date').value = ""; document.getElementById('b-time-end').value = ""; sel.value = ""; return; }
+        let maxDay = parseInt(settings.maxOrderPerDay) || 0;
+        if(maxDay > 0) { let allOrdersToday = [...getClients(), ...getBookings()].filter(x => x.date === date); if(allOrdersToday.length >= maxDay) { alert(`Kuota hari tsb penuh.`); document.getElementById('b-date').value = ""; return; } }
+        for(let i=1; i<sel.options.length; i++) { let opt = sel.options[i]; let start = opt.value; let end = minsToTime(timeToMins(start) + totalMinsCache); if(checkConflict(date, start, end)) { opt.disabled = true; opt.text = `${start} (Penuh)`; } else { opt.disabled = false; opt.text = start; } }
+        if(sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].disabled) { sel.value = ""; document.getElementById('b-time-end').value = ""; alert("Jam bentrok, pilih yang lain."); }
+    }
+
+    function submitBooking() {
+        const name = document.getElementById('b-name').value; const wa = document.getElementById('b-wa').value.replace(/[^0-9]/g, ''); const cat = document.getElementById('b-cat').value; const date = document.getElementById('b-date').value; const tStart = document.getElementById('b-time-start').value; const tEnd = document.getElementById('b-time-end').value;
+        let finalLocation = locSelect.value; let finalMaps = "";
+        if(finalLocation === 'Lainnya') { finalLocation = document.getElementById('b-custom-loc').value.trim(); finalMaps = document.getElementById('b-maps-link').value.trim(); if(!finalLocation) return alert("Silakan tulis nama lokasi Anda!"); }
+
+        if(!name || !wa || !date || !tStart || !selectedPackage || !finalLocation) return alert("Pilih paket, jam sesi, dan lokasi!");
+
+        const calc = calcTotal(); let bookings = getBookings();
+        bookings.push({ name, wa, category: cat, date, timeRange: `${tStart} - ${tEnd}`, paket: selectedPackage.name, addons: calc.addonsText, priceEstimate: calc.basePrice, location: finalLocation, locationLink: finalMaps, isAccepted: false });
+        saveBookings(bookings);
+
+        let mapsText = finalMaps ? `\n🗺️ Maps: ${finalMaps}` : '';
+        const msg = `Halo Admin ✨\n\nSaya booking sesi foto:\n👤 Nama: *${name}*\n🏷️ Kategori: *${cat}*\n📦 Paket: *${selectedPackage.name}*\n📅 Tanggal: *${date}*\n⏰ Waktu: *${tStart} s/d ${tEnd}*\n📍 Lokasi: *${finalLocation}*${mapsText}\n➕ Add-ons: *${calc.addonsText.join(', ') || 'Tidak ada'}*\n💰 Tagihan (IDR): *${formatRupiah(calc.basePrice)}*\n\n*(Mohon konfirmasi, saya akan transfer DP ke rekening Anda)*\n\nTerima kasih!`;
+        window.open(`https://wa.me/${settings.wa}?text=${encodeURIComponent(msg)}`, '_blank'); window.location.href = 'index.html';
+    }
+    
+    // Terapkan bahasa dan render paket saat pertama kali halaman dimuat
+    document.addEventListener("DOMContentLoaded", () => {
+        applyLang();
+        renderPackages();
+    });
+</script>
+</body></html>
